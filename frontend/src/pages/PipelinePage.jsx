@@ -298,7 +298,9 @@ export default function PipelinePage() {
                   </Tag>
                 </Row>
                 {sheet.observations?.length > 0 && (
-                  <Row label="Observations" value={sheet.observations.join(' · ')} />
+                  <Row label="Observations" value={sheet.observations.map(o =>
+                    typeof o === 'string' ? o : (o.text || o.note || o.description || o.observation || JSON.stringify(o))
+                  ).join(' · ')} />
                 )}
               </div>
             ))}
