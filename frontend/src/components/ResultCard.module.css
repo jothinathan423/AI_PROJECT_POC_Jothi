@@ -1,0 +1,50 @@
+.card {
+  background: #fff;
+  border: 1px solid #e2e6ef;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity .4s, transform .4s;
+}
+.visible { opacity: 1; transform: translateY(0); }
+.header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  background: #f7f8fc;
+  border-bottom: 1px solid #e2e6ef;
+}
+.icon { font-size: 15px; }
+.title { font-family: 'Space Grotesk', sans-serif; font-size: 12.5px; font-weight: 600; flex: 1; }
+.count {
+  font-size: 11px; color: #9ca3af;
+  background: #e2e6ef; padding: 1px 7px; border-radius: 10px;
+}
+.body { padding: 12px 14px; }
+.row {
+  display: flex; gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid #e2e6ef;
+  font-size: 12px; align-items: flex-start;
+}
+.row:last-child { border-bottom: none; }
+.rowLabel { color: #4b5563; flex-shrink: 0; min-width: 90px; }
+.rowVal { color: #111827; font-weight: 500; min-width: 0; }
+.tag {
+  display: inline-block; font-size: 10px; font-weight: 600;
+  padding: 1px 6px; border-radius: 8px; margin-right: 4px;
+}
+.tag_read { background: #f0fdf4; color: #16a34a; }
+.tag_inferred { background: #eff4ff; color: #2563eb; }
+.tag_na { background: #f9fafb; color: #6b7280; border: 1px solid #e2e6ef; }
+.rfi {
+  padding: 8px 10px;
+  border-radius: 0 6px 6px 0;
+  margin-bottom: 8px; font-size: 12px; line-height: 1.55;
+}
+.rfi:last-child { margin-bottom: 0; }
+.rfiHigh { border-left: 3px solid #d97706; background: #fffbeb; }
+.rfiMed { border-left: 3px solid #2563eb; background: #eff4ff; }
+.rfiId { font-weight: 700; font-size: 11px; margin-bottom: 2px; color: #d97706; }
+.rfiMed .rfiId { color: #2563eb; }

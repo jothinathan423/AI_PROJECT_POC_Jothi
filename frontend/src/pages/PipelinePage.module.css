@@ -1,0 +1,93 @@
+.main {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .main { grid-template-columns: 1fr; padding: 16px; }
+}
+.left { display: flex; flex-direction: column; gap: 14px; }
+.right { display: flex; flex-direction: column; gap: 14px; }
+
+.card {
+  background: #fff;
+  border: 1px solid #e2e6ef;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  overflow: hidden;
+}
+.cardHeader {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e6ef;
+  background: #f7f8fc;
+}
+.cardIcon { font-size: 16px; }
+.cardTitle { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600; }
+.cardBody { padding: 14px 16px; }
+
+.docItem {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #e2e6ef; border-radius: 8px;
+  margin-bottom: 8px; background: #f7f8fc;
+}
+.docIcon {
+  width: 32px; height: 32px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; background: #eff4ff; flex-shrink: 0;
+}
+.docInfo { flex: 1; min-width: 0; }
+.docName { font-weight: 600; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.docMeta { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+.docBadge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 10px; flex-shrink: 0; margin-top: 2px; }
+.badgeRfq { background: #eff4ff; color: #2563eb; }
+.badgeDraw { background: #fffbeb; color: #d97706; }
+
+.startBtn {
+  width: 100%; padding: 13px;
+  background: #1a3461; color: #fff;
+  border: none; border-radius: 8px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px; font-weight: 600;
+  cursor: pointer; letter-spacing: .5px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background .2s, transform .1s;
+  margin-top: 14px;
+}
+.startBtn:hover:not(:disabled) { background: #243e72; transform: translateY(-1px); }
+.startBtn:disabled { background: #9ca3af; cursor: not-allowed; transform: none; }
+
+.spin { display: inline-block; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.proposalSection { margin-bottom: 14px; }
+.proposalTitle {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .6px; color: #9ca3af; margin-bottom: 4px;
+}
+.proposalBody { font-size: 12px; color: #4b5563; line-height: 1.65; }
+
+.placeholder {
+  background: #fff; border: 1px dashed #d1d5db;
+  border-radius: 10px; padding: 48px 24px;
+  text-align: center; color: #9ca3af;
+}
+.placeholderIcon { font-size: 32px; margin-bottom: 12px; display: block; }
+.placeholderText { font-size: 13px; margin-bottom: 6px; color: #6b7280; }
+.placeholderSub { font-size: 12px; }
+
+.exportRow { display: flex; gap: 10px; flex-wrap: wrap; }
+.exportBtn {
+  flex: 1; min-width: 140px; padding: 12px 16px;
+  border-radius: 8px; border: none;
+  font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px;
+  transition: opacity .15s, transform .1s;
+}
+.exportBtn:hover { opacity: .88; transform: translateY(-1px); }
+.btnProposal { background: #2563eb; color: #fff; }
