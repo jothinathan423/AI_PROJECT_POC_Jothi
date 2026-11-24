@@ -13,6 +13,7 @@ export default function PipelineStep({
   id, label, title, badge, badgeType, description, messages,
   status, showConnector, connectorActive,
   gateActions, onApprove, onReturn,
+  approveLabel, returnLabel,
   stepRef,
 }) {
   return (
@@ -41,14 +42,15 @@ export default function PipelineStep({
           </div>
         )}
         {gateActions && status === 'waiting' && (
-          <GateButtons onApprove={onApprove} onReturn={onReturn} />
+          <GateButtons onApprove={onApprove} onReturn={onReturn}
+            approveLabel={approveLabel} returnLabel={returnLabel} />
         )}
       </div>
     </div>
   )
 }
 
-function GateButtons({ onApprove, onReturn }) {
+function GateButtons({ onApprove, onReturn, approveLabel, returnLabel }) {
   const [returning, setReturning] = useState(false)
   const [comment, setComment] = useState('')
 
@@ -64,7 +66,7 @@ function GateButtons({ onApprove, onReturn }) {
         />
         <div className={styles.gateRow}>
           <button className={styles.btnReturn} onClick={() => { onReturn(comment); setReturning(false) }}>
-            ↩ Confirm Return
+            {returnLabel ? returnLabel.replace(/^[^ ]+ /, '') : '↩ Confirm Return'}
           </button>
           <button className={styles.btnCancel} onClick={() => setReturning(false)}>Cancel</button>
         </div>
@@ -74,8 +76,8 @@ function GateButtons({ onApprove, onReturn }) {
 
   return (
     <div className={styles.gateActions}>
-      <button className={styles.btnApprove} onClick={onApprove}>✓ Approve</button>
-      <button className={styles.btnReturn} onClick={() => setReturning(true)}>↩ Return for Rework</button>
+      <button className={styles.btnApprove} onClick={onApprove}>{approveLabel || '✓ Approve'}</button>
+      <button className={styles.btnReturn} onClick={() => setReturning(true)}>{returnLabel || '↩ Return for Rework'}</button>
     </div>
   )
 }

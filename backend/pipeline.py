@@ -260,6 +260,82 @@ Gaps/RFIs: {json.dumps(cross_data, indent=2)[:1500]}
     return json.loads(response.choices[0].message.content)
 
 
+async def step_bid_viability(
+    run_id: int, rfq_data: dict, drawing_data: dict, cross_data: dict, past_projects: list
+) -> dict:
+    """Compare current project against historical portfolio to assess bid viability."""
+    rfi_count = len(cross_data.get("discrepancies", []))
+    high_rfis = sum(
+        1 for d in cross_data.get("discrepancies", [])
+        if d.get("priority", "").lower() == "high"
+    )
+
+    past_summary = [
+        {
+            "project_name": p.get("project_name"),
+            "year": p.get("year"),
+            "type": p.get("project_type"),
+            "disciplines": p.get("disciplines"),
+            "corridor_km": p.get("corridor_length_km"),
+            "drawing_completeness": p.get("drawing_completeness"),
+            "rfi_count_at_tender": p.get("rfi_count_at_tender"),
+            "outcome": p.get("outcome"),
+            "profit_margin_pct": p.get("profit_margin_pct"),
+            "notes": p.get("notes"),
+        }
+        for p in past_projects
+    ]
+
+    prompt = f"""You are a senior bid manager at AB Consultants, a civil engineering firm.
+Analyse this new project against our historical project portfolio and assess bid viability.
+
+CURRENT PROJECT:
+- Name: {rfq_data.get("project_name", "Not specified")}
+- Client: {rfq_data.get("client_name", "Not specified")}
+- Disciplines required: {rfq_data.get("disciplines", [])}
+- Scope: {rfq_data.get("scope_summary", "")[:400]}
+- Drawing completeness: illustrative / not for construction
+- Total RFIs raised: {rfi_count} (of which {high_rfis} are HIGH severity)
+- Drawing sheets analysed: {len(drawing_data.get("sheets", []))}
+
+HISTORICAL PROJECT PORTFOLIO (all AB Consultants past bids):
+{json.dumps(past_summary, indent=2)}
+
+Based on this portfolio comparison, return ONLY valid JSON:
+{{
+  "technical_match_score": <integer 0-100 — how well our discipline history matches>,
+  "rfi_risk_level": "low or medium or high",
+  "rfi_risk_reason": "<one sentence explaining the risk level>",
+  "overall_recommendation": "pursue or pursue_with_conditions or do_not_pursue",
+  "recommendation_summary": "<2-3 sentence explanation of the recommendation>",
+  "top_similar_projects": [
+    {{
+      "project_name": "",
+      "year": 0,
+      "outcome": "",
+      "profit_margin_pct": "",
+      "similarity_reason": "<why this past project is relevant>"
+    }}
+  ],
+  "key_risks": ["<risk 1>", "<risk 2>", "<risk 3>"],
+  "key_strengths": ["<strength 1>", "<strength 2>", "<strength 3>"]
+}}
+
+Rules:
+- top_similar_projects: pick the 3 most relevant entries from the portfolio above
+- If rfi_count >= 9: set rfi_risk_level to "high"
+- If we declined a nearly identical project before (Bay Road, 11 RFIs), factor that in
+- If outcome of similar projects was mostly won with good margin: lean toward "pursue"
+- do_not_pursue only if we clearly lack the disciplines OR risk is unacceptably high
+"""
+    response = await client.chat.completions.create(
+        model=TEXT_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        response_format={"type": "json_object"},
+    )
+    return json.loads(response.choices[0].message.content)
+
+
 def export_proposal_docx(run_id: int, rfq_data: dict, proposal_data: dict) -> str:
     from docx import Document
     from docx.shared import Pt, RGBColor

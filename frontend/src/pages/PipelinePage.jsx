@@ -8,29 +8,34 @@ import styles from './PipelinePage.module.css'
 const API = 'http://localhost:8001'
 
 const STEPS = [
-  { id: 'g0',       label: 'G0',  title: 'Intake Acceptance',       badge: 'Auto',     badgeType: 'auto' },
-  { id: 'g1',       label: 'G1',  title: 'Package Quality Gate',    badge: 'Auto',     badgeType: 'auto' },
-  { id: 'ai_rfq',   label: 'AI',  title: 'RFQ Document Analysis',   badge: 'AI',       badgeType: 'ai' },
-  { id: 'ai_draw',  label: 'AI',  title: 'Drawing Analysis',        badge: 'AI Vision',badgeType: 'ai' },
-  { id: 'cross',    label: 'AI',  title: 'Cross-Document Analysis', badge: 'AI',       badgeType: 'ai' },
-  { id: 'g2',       label: 'G2',  title: 'Engineering Validation',  badge: 'Human Gate',badgeType: 'gate', gate: true },
-  { id: 'proposal', label: 'AI',  title: 'Proposal Assembly',       badge: 'AI + Template',badgeType: 'ai' },
-  { id: 'g3',       label: 'G3',  title: 'Commercial Review',       badge: 'Human Gate',badgeType: 'gate', gate: true },
-  { id: 'g4',       label: 'G4',  title: 'Final QA & Release',      badge: 'Human Gate',badgeType: 'gate', gate: true },
-  { id: 'export',   label: '📤', title: 'Export & Archive',        badge: 'Final',    badgeType: 'auto' },
+  { id: 'g0',           label: 'G0',  title: 'Intake Acceptance',          badge: 'Auto',          badgeType: 'auto' },
+  { id: 'g1',           label: 'G1',  title: 'Package Quality Gate',       badge: 'Auto',          badgeType: 'auto' },
+  { id: 'ai_rfq',       label: 'AI',  title: 'RFQ Document Analysis',      badge: 'AI',            badgeType: 'ai' },
+  { id: 'ai_draw',      label: 'AI',  title: 'Drawing Analysis',           badge: 'AI Vision',     badgeType: 'ai' },
+  { id: 'cross',        label: 'AI',  title: 'Cross-Document Analysis',    badge: 'AI',            badgeType: 'ai' },
+  { id: 'bid_viability',label: 'AI',  title: 'Bid Viability Assessment',   badge: 'AI + Portfolio',badgeType: 'ai' },
+  { id: 'g_bid',        label: '⚖',  title: 'Bid Go / No-Go Decision',    badge: 'Human Gate',    badgeType: 'gate', gate: true,
+    approveLabel: '✓ Go — Pursue Bid', returnLabel: '✗ No-Go — Decline' },
+  { id: 'g2',           label: 'G2',  title: 'Engineering Validation',     badge: 'Human Gate',    badgeType: 'gate', gate: true },
+  { id: 'proposal',     label: 'AI',  title: 'Proposal Assembly',          badge: 'AI + Template', badgeType: 'ai' },
+  { id: 'g3',           label: 'G3',  title: 'Commercial Review',          badge: 'Human Gate',    badgeType: 'gate', gate: true },
+  { id: 'g4',           label: 'G4',  title: 'Final QA & Release',         badge: 'Human Gate',    badgeType: 'gate', gate: true },
+  { id: 'export',       label: '📤', title: 'Export & Archive',           badge: 'Final',         badgeType: 'auto' },
 ]
 
 const STEP_DESC = {
-  g0:       'Capture opportunity metadata and validate package manifest',
-  g1:       'Check file readability, page counts and drawing revisions',
-  ai_rfq:   'Extract project requirements, scope and submission rules via AI',
-  ai_draw:  'Classify sheets and extract labels, notes and schedules via AI Vision',
-  cross:    'Compare RFQ, drawings, specs and BOQ — flag conflicts and gaps',
-  g2:       'Discipline lead validates drawing findings and assumptions',
-  proposal: 'Map validated requirements to AB-approved proposal template',
-  g3:       'Proposal manager reviews coverage, effort, fees and compliance',
-  g4:       'Authorised AB approver checks mandatory sections and approvals',
-  export:   'Generate approved DOCX proposal and full audit trail',
+  g0:           'Capture opportunity metadata and validate package manifest',
+  g1:           'Check file readability, page counts and drawing revisions',
+  ai_rfq:       'Extract project requirements, scope and submission rules via AI',
+  ai_draw:      'Classify sheets and extract labels, notes and schedules via AI Vision',
+  cross:        'Compare RFQ, drawings, specs and BOQ — flag conflicts and gaps',
+  bid_viability:'Compare against previous projects — assess technical match, RFI risk and profitability',
+  g_bid:        'Manager reviews AI assessment and makes Go / No-Go bid decision',
+  g2:           'Discipline lead validates drawing findings and assumptions',
+  proposal:     'Map validated requirements to AB-approved proposal template',
+  g3:           'Proposal manager reviews coverage, effort, fees and compliance',
+  g4:           'Authorised AB approver checks mandatory sections and approvals',
+  export:       'Generate approved DOCX proposal and full audit trail',
 }
 
 function initStepState() {
@@ -46,7 +51,7 @@ export default function PipelinePage() {
   const [complete, setComplete] = useState(false)
   const [statusLabel, setStatusLabel] = useState('Ready')
   const [stepState, setStepState] = useState(initStepState)
-  const [results, setResults] = useState({ rfq: null, drawing: null, rfis: null, proposal: null })
+  const [results, setResults] = useState({ rfq: null, drawing: null, rfis: null, bidViability: null, proposal: null })
   const esRef = useRef(null)
   const stepRefs = useRef({})
 
@@ -76,7 +81,7 @@ export default function PipelinePage() {
     setRunning(true)
     setComplete(false)
     setStepState(initStepState())
-    setResults({ rfq: null, drawing: null, rfis: null, proposal: null })
+    setResults({ rfq: null, drawing: null, rfis: null, bidViability: null, proposal: null })
     setStatusLabel('Processing…')
 
     const { data } = await axios.post(`${API}/api/start`)
@@ -93,6 +98,13 @@ export default function PipelinePage() {
       if (d.waiting) {
         updateStep(step, { status: 'waiting' })
         setStatusLabel(`Awaiting ${step.toUpperCase()} approval`)
+        return
+      }
+      if (d.declined) {
+        updateStep(step, { status: 'returned' })
+        addMsg(step, `✗ ${d.message}`)
+        setRunning(false)
+        setStatusLabel('Bid Declined')
         return
       }
       if (d.returned) {
@@ -127,6 +139,7 @@ export default function PipelinePage() {
         if (step === 'ai_rfq') setResults(r => ({ ...r, rfq: d.data }))
         if (step === 'ai_draw') setResults(r => ({ ...r, drawing: d.data }))
         if (step === 'cross') setResults(r => ({ ...r, rfis: d.data }))
+        if (step === 'bid_viability') setResults(r => ({ ...r, bidViability: d.data }))
         if (step === 'proposal') setResults(r => ({ ...r, proposal: d.data }))
       }
     })
@@ -141,6 +154,9 @@ export default function PipelinePage() {
       } else if (d.status === 'returned') {
         setRunning(false)
         setStatusLabel(`Returned at ${(d.gate || '').toUpperCase()} for rework`)
+      } else if (d.status === 'declined') {
+        setRunning(false)
+        setStatusLabel('Bid Declined — Not Pursuing')
       } else if (d.status === 'failed') {
         setRunning(false)
         setStatusLabel('Quality gate failed')
@@ -247,6 +263,8 @@ export default function PipelinePage() {
                     showConnector={idx < STEPS.length - 1}
                     connectorActive={s.connActive}
                     gateActions={!!step.gate}
+                    approveLabel={step.approveLabel}
+                    returnLabel={step.returnLabel}
                     onApprove={() => handleGate(step.id, 'approve')}
                     onReturn={(comment) => handleGate(step.id, 'return', comment)}
                     stepRef={el => { stepRefs.current[step.id] = el }}
@@ -319,6 +337,9 @@ export default function PipelinePage() {
             ))}
           </ResultCard>
 
+          {/* Bid Viability Assessment */}
+          {results.bidViability && <BidViabilityCard data={results.bidViability} />}
+
           {/* Proposal Draft */}
           <ResultCard icon="📝" title="Proposal Draft v1" count={proposalSections.length ? `${proposalSections.length} sections` : undefined} visible={!!results.proposal}>
             {proposalSections.map((s, i) => (
@@ -335,6 +356,94 @@ export default function PipelinePage() {
               <button className={`${styles.exportBtn} ${styles.btnProposal}`} onClick={downloadProposal}>
                 📄 Download Proposal DOCX
               </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BidViabilityCard({ data }) {
+  const rec = data.overall_recommendation || 'pursue_with_conditions'
+  const recColor = rec === 'pursue' ? '#16a34a' : rec === 'do_not_pursue' ? '#dc2626' : '#d97706'
+  const recLabel = rec === 'pursue' ? '✓ PURSUE' : rec === 'do_not_pursue' ? '✗ DO NOT PURSUE' : '⚠ PURSUE WITH CONDITIONS'
+  const rfiColor = data.rfi_risk_level === 'high' ? '#dc2626' : data.rfi_risk_level === 'medium' ? '#d97706' : '#16a34a'
+  const score = data.technical_match_score || 0
+
+  return (
+    <div className={styles.card} style={{ overflow: 'hidden' }}>
+      <div className={styles.cardHeader}>
+        <span className={styles.cardIcon}>⚖️</span>
+        <span className={styles.cardTitle}>Bid Viability Assessment</span>
+      </div>
+      <div className={styles.cardBody}>
+
+        {/* Recommendation banner */}
+        <div className={styles.bidRecBanner} style={{ background: recColor }}>
+          <span className={styles.bidRecLabel}>{recLabel}</span>
+        </div>
+        {data.recommendation_summary && (
+          <p className={styles.bidRecSummary}>{data.recommendation_summary}</p>
+        )}
+
+        {/* Scores */}
+        <div className={styles.bidScoreRow}>
+          <div className={styles.bidScoreItem}>
+            <div className={styles.bidScoreLabel}>Technical Match</div>
+            <div className={styles.bidScoreBar}>
+              <div className={styles.bidScoreFill} style={{ width: `${score}%`, background: score >= 70 ? '#16a34a' : score >= 40 ? '#d97706' : '#dc2626' }} />
+            </div>
+            <div className={styles.bidScorePct}>{score}%</div>
+          </div>
+          <div className={styles.bidScoreItem}>
+            <div className={styles.bidScoreLabel}>RFI Risk Level</div>
+            <div className={styles.bidRfiBadge} style={{ background: rfiColor + '22', color: rfiColor, border: `1px solid ${rfiColor}` }}>
+              {(data.rfi_risk_level || 'medium').toUpperCase()}
+            </div>
+            <div className={styles.bidScorePct} style={{ color: '#6b7280', fontSize: 10 }}>{data.rfi_risk_reason}</div>
+          </div>
+        </div>
+
+        {/* Top similar projects */}
+        {data.top_similar_projects?.length > 0 && (
+          <>
+            <div className={styles.bidSectionTitle}>Similar Past Projects</div>
+            {data.top_similar_projects.map((p, i) => (
+              <div key={i} className={styles.bidProjectItem}>
+                <div className={styles.bidProjectName}>{p.project_name} <span style={{ color: '#9ca3af' }}>({p.year})</span></div>
+                <div style={{ display: 'flex', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
+                  <span className={styles.bidProjectTag} style={{ background: p.outcome === 'won' ? '#dcfce7' : p.outcome === 'declined' ? '#fef3c7' : '#fee2e2', color: p.outcome === 'won' ? '#16a34a' : p.outcome === 'declined' ? '#d97706' : '#dc2626' }}>
+                    {p.outcome?.toUpperCase()}
+                  </span>
+                  {p.profit_margin_pct && p.profit_margin_pct !== 'N/A' && (
+                    <span className={styles.bidProjectTag} style={{ background: '#eff4ff', color: '#2563eb' }}>
+                      Margin: {p.profit_margin_pct}%
+                    </span>
+                  )}
+                </div>
+                {p.similarity_reason && <div className={styles.bidProjectReason}>{p.similarity_reason}</div>}
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* Risks & Strengths */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+          {data.key_risks?.length > 0 && (
+            <div>
+              <div className={styles.bidSectionTitle} style={{ color: '#dc2626' }}>Key Risks</div>
+              <ul className={styles.bidList}>
+                {data.key_risks.map((r, i) => <li key={i}>{r}</li>)}
+              </ul>
+            </div>
+          )}
+          {data.key_strengths?.length > 0 && (
+            <div>
+              <div className={styles.bidSectionTitle} style={{ color: '#16a34a' }}>Key Strengths</div>
+              <ul className={styles.bidList}>
+                {data.key_strengths.map((s, i) => <li key={i}>{s}</li>)}
+              </ul>
             </div>
           )}
         </div>

@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from db import get_db, init_db
-from models import AnalysisRun, RFQRequirement, DrawingRegister, Discrepancy, ProposalSection, ApprovalLog
+from models import AnalysisRun, RFQRequirement, DrawingRegister, Discrepancy, ProposalSection, ApprovalLog, PastProject
 import pipeline as pl
 
 app = FastAPI(title="RFQ Analysis POC")
@@ -252,6 +252,40 @@ async def run_pipeline(run_id: int):
         db.commit()
         await emit("cross", f"Cross-check done — {len(cross_data.get('discrepancies', []))} RFIs",
                    done=True, data=cross_data)
+
+        # Bid Viability Assessment
+        await emit("bid_viability", "Comparing project against historical portfolio…")
+        past_rows = db.query(PastProject).all()
+        past_projects_list = [
+            {
+                "project_name": p.project_name, "year": p.year, "project_type": p.project_type,
+                "disciplines": p.disciplines, "corridor_length_km": p.corridor_length_km,
+                "drawing_completeness": p.drawing_completeness, "rfi_count_at_tender": p.rfi_count_at_tender,
+                "outcome": p.outcome, "profit_margin_pct": p.profit_margin_pct, "notes": p.notes,
+            }
+            for p in past_rows
+        ]
+        bid_task = asyncio.create_task(
+            pl.step_bid_viability(run_id, rfq_data, drawing_data, cross_data, past_projects_list)
+        )
+        ka_bid = asyncio.create_task(keepalive("bid_viability", "Running portfolio comparison", bid_task))
+        bid_data = await bid_task
+        ka_bid.cancel()
+
+        rec = bid_data.get("overall_recommendation", "pursue_with_conditions")
+        score = bid_data.get("technical_match_score", 0)
+        await emit("bid_viability",
+                   f"Viability assessment complete — {score}% match · Recommendation: {rec.replace('_',' ').upper()}",
+                   done=True, data=bid_data)
+
+        # G_BID Gate — human Go / No-Go decision
+        await emit("g_bid", "Awaiting manager Go / No-Go decision on bid", waiting=True)
+        action, comment = await wait_gate("g_bid")
+        if action == "return":
+            await emit("g_bid", f"Bid DECLINED — {comment or 'No-Go decision by manager'}", declined=True)
+            await out_q.put(sse("pipeline_done", {"status": "declined", "gate": "g_bid"}))
+            return
+        await emit("g_bid", "Bid APPROVED — Proceeding to engineering validation ✓", done=True)
 
         # G2 Gate
         await emit("g2", "Awaiting engineering validation from discipline lead", waiting=True)

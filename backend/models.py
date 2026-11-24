@@ -65,3 +65,21 @@ class ApprovalLog(Base):
     comment = Column(Text)
     timestamp = Column(DateTime, default=datetime.utcnow)
     version = Column(Integer, default=1)
+
+
+class PastProject(Base):
+    __tablename__ = "past_projects"
+    id = Column(Integer, primary_key=True)
+    project_name = Column(String(300))
+    year = Column(Integer)
+    client = Column(String(200))
+    project_type = Column(String(100))          # road_rehabilitation, stormwater, bridge, building, etc.
+    disciplines = Column(JSON)                  # list of strings
+    corridor_length_km = Column(String(20))     # nullable, stored as string e.g. "2.1" or "N/A"
+    drawing_completeness = Column(String(50))   # complete / partial / illustrative
+    rfi_count_at_tender = Column(Integer)
+    outcome = Column(String(20))                # won / lost / declined
+    profit_margin_pct = Column(String(10))      # "18" or "N/A"
+    complexity = Column(String(20))             # low / medium / high
+    active_road = Column(String(10))            # yes / no
+    notes = Column(Text)

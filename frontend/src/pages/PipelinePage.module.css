@@ -81,6 +81,28 @@
 .placeholderText { font-size: 13px; margin-bottom: 6px; color: #6b7280; }
 .placeholderSub { font-size: 12px; }
 
+/* ── Bid Viability Card ──────────────────────────────── */
+.bidRecBanner {
+  border-radius: 7px; padding: 10px 14px; margin-bottom: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+.bidRecLabel { color: #fff; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 13px; letter-spacing: .4px; }
+.bidRecSummary { font-size: 12px; color: #4b5563; line-height: 1.6; margin: 0 0 12px; }
+.bidScoreRow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.bidScoreItem { display: flex; flex-direction: column; gap: 4px; }
+.bidScoreLabel { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .4px; }
+.bidScoreBar { height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
+.bidScoreFill { height: 100%; border-radius: 4px; transition: width .6s ease; }
+.bidScorePct { font-size: 12px; font-weight: 600; color: #374151; }
+.bidRfiBadge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; display: inline-block; }
+.bidSectionTitle { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #6b7280; margin: 10px 0 6px; }
+.bidProjectItem { border: 1px solid #e5e7eb; border-radius: 7px; padding: 8px 10px; margin-bottom: 6px; }
+.bidProjectName { font-size: 12px; font-weight: 600; color: #1f2937; }
+.bidProjectTag { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 5px; }
+.bidProjectReason { font-size: 11px; color: #6b7280; margin-top: 4px; line-height: 1.5; }
+.bidList { margin: 0; padding-left: 16px; }
+.bidList li { font-size: 11px; color: #4b5563; line-height: 1.6; margin-bottom: 2px; }
+
 .exportRow { display: flex; gap: 10px; flex-wrap: wrap; }
 .exportBtn {
   flex: 1; min-width: 140px; padding: 12px 16px;
