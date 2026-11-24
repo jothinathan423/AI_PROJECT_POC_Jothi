@@ -222,6 +222,13 @@ async def run_pipeline(run_id: int):
 
         # Save Drawing
         for sheet in drawing_data.get("sheets", []):
+            obs = sheet.get("observations", sheet.get("summary", ""))
+            if isinstance(obs, list):
+                obs = "; ".join(
+                    o if isinstance(o, str)
+                    else (o.get("text") or o.get("note") or o.get("description") or o.get("observation") or str(o))
+                    for o in obs
+                )
             db.add(DrawingRegister(
                 run_id=run_id,
                 sheet_id=sheet.get("sheet_id") or sheet.get("drawing_number", ""),
@@ -230,7 +237,7 @@ async def run_pipeline(run_id: int):
                 revision=sheet.get("revision", ""),
                 scale=sheet.get("scale", ""),
                 source_file=g0["drawing_file"],
-                findings=sheet.get("observations", sheet.get("summary", "")),
+                findings=obs,
             ))
         db.commit()
         await emit("ai_draw", f"Drawing analysis complete — {len(drawing_data.get('sheets', []))} sheet(s)",
