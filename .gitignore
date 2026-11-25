@@ -3,6 +3,7 @@
 
 # Python
 venv/
+myenv/
 __pycache__/
 *.pyc
 *.pyo
@@ -22,3 +23,9 @@ backend/exports/
 # OS
 .DS_Store
 Thumbs.db
+
+# Third-party reference code (MIT copies kept for adaptation, not part of the app)
+reference_code/
+
+# Client documents uploaded through the app
+backend/uploads/

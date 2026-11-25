@@ -25,10 +25,10 @@ A proof-of-concept pipeline that ingests a civil engineering RFQ package (DOCX +
 Frontend (React + Vite)          Backend (FastAPI + Python)
   localhost:5173            ←→     localhost:8001
   
-  - Horizontal timeline UI          - SSE streaming pipeline
-  - Clickable step panels           - OpenAI GPT-4o (text + vision)
-  - Gate approve / decline          - PostgreSQL via SQLAlchemy
-  - Live progress via SSE           - DOCX export via python-docx
+  - 7-step workflow UI              - Background AI steps (UI polls)
+  - Role-based gates                - OpenAI GPT-4o (text + vision)
+  - Findings review + approvals     - PostgreSQL via SQLAlchemy
+  - View complete process           - DOCX export via python-docx
 ```
 
 ---
@@ -54,7 +54,8 @@ AI_PROJECT_POC/
 │   ├── models.py             # SQLAlchemy ORM models
 │   ├── db.py                 # DB connection + session factory
 │   ├── seed_past_projects.py # Seeds 10 mock past projects
-│   ├── documents/            # Drop RFQ (.docx) + Drawing (.pdf) here
+│   ├── documents/            # Sample RFQ + drawing for trials
+│   ├── uploads/              # Files uploaded through the app (git-ignored)
 │   └── exports/              # Generated DOCX proposals saved here
 ├── frontend/
 │   ├── src/
@@ -194,130 +195,32 @@ npm run dev
 Frontend runs at: `http://localhost:5173`
 
 ### Add documents
-
-Place your documents in `backend/documents/`:
-
-- One `.docx` file — the RFQ package
-- One `.pdf` file — the engineering drawings
-
-The app auto-detects them by file extension on startup.
+Open the app, create an opportunity and upload the RFQ package in step 1 (files are stored under `backend/uploads/`, which is git-ignored). The sample files in `backend/documents/` can be used for a trial.
 
 ---
 
-## Pipeline Steps
+## Workflow (7 steps, 5 human gates)
 
-| # | Step | Type | Description |
-|---|------|------|-------------|
-| 1 | Intake Acceptance | Auto | Captures file manifest and metadata |
-| 2 | Package Quality Gate | Auto | Checks file readability and page counts |
-| 3 | RFQ Document Analysis | AI | Extracts requirements, scope, deadlines via GPT-4o |
-| 4 | Drawing Register | AI Vision | Classifies sheets and extracts labels via GPT-4o Vision |
-| 5 | Cross-Document Analysis | AI | Flags gaps between RFQ and drawings, generates RFI list |
-| 6 | Bid Viability Assessment | AI + Portfolio | Compares project against 10 historical projects; produces Go/No-Go recommendation |
-| 7 | Bid Go / No-Go Decision | Human Gate | Manager approves to proceed or declines the bid |
-| 8 | Engineering Validation | Human Gate | Discipline lead validates drawing findings |
-| 9 | Proposal Assembly | AI + Template | Generates 8-section proposal draft |
-| 10 | Commercial Review | Human Gate | Proposal manager reviews coverage and fees |
-| 11 | Final QA & Release | Human Gate | Authorised AB approver checks mandatory sections |
-| 12 | Export & Archive | Auto | Generates approved DOCX + full audit trail |
+| # | Step | Who / what |
+|---|------|-----------|
+| 1 | Intake & package | Coordinator creates an opportunity and uploads many files (RFQ, drawings, spec, BOQ, addenda). Manifest + package status (Ready / Warning / Incomplete). |
+| 2 | Historical capability check | Rule-based discipline coverage from past projects + cited records → recommendation A/B/C/D. **Management gate:** Go / Conditional Go / No-Go / Request evidence. |
+| 3 | Technical analysis | RFQ extraction, every drawing sheet read, rule checks, cross-check → findings (source page, confidence, status) + draft RFIs + risks. |
+| 4 | Engineering review | Discipline lead verifies / corrects / disputes / assumes each finding; RFI register. **Gate G2** (blocked while critical items are open). |
+| 5 | Proposal | Drafted from verified findings only; versioned; compliance matrix. **Gate:** proposal manager. |
+| 6 | Commercial & final approval | Commercial lead enters fees (never AI). **Gate G3**, QA checklist, **Gate G4** (separation of duties). |
+| 7 | Release & archive | DRAFT/FINAL DOCX package, manual submission record, archive. |
 
----
+Roles are chosen in the top bar (demo switcher, **not authentication**). Approvals are bound to the proposal version; editing a proposal invalidates dependent approvals. All state is in PostgreSQL and every action goes to an append-only audit trail (`audit_events`).
 
-## Database Tables
+### Backend modules
+`main.py` (API + background steps) · `workflow.py` (statuses, roles, audit) · `ingest.py` (files, pages, package check) · `analysis.py` (capability + technical analysis) · `proposal.py` (review blockers, drafting, QA) · `export.py` (DOCX) · `llm.py` / `llm_mock.py` (OpenAI wrapper / offline mock) · `models_v2.py` (tables).
 
-### `analysis_runs`
-Tracks each pipeline run.
+### Running without OpenAI credits
+Start the backend with `LLM_MOCK=1` for canned AI output (demo/testing only - never for real bids).
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | Integer PK | Auto-increment |
-| status | String | started / completed |
-| current_step | String | Last active step ID |
-| created_at | DateTime | — |
-| updated_at | DateTime | Auto-updated |
+## Database tables
+Created automatically on startup: `opportunities`, `opp_files`, `file_pages`, `step_states`, `findings`, `rfis`, `capability_assessments`, `proposal_versions`, `approvals`, `audit_events`, `submissions`, plus `past_projects` (seed with `python seed_past_projects.py`). The older `analysis_runs`-based tables remain but are unused.
 
-### `rfq_requirements`
-AI-extracted fields from the RFQ document.
-
-| Column | Type | Notes |
-|--------|------|-------|
-| id | Integer PK | — |
-| run_id | Integer | FK → analysis_runs.id |
-| field | String | e.g. project_name, disciplines |
-| value | Text | Extracted value |
-| source_file | String | Filename |
-
-### `drawing_register`
-Sheet-by-sheet data extracted from engineering drawings.
-
-| Column | Type | Notes |
-|--------|------|-------|
-| id | Integer PK | — |
-| run_id | Integer | FK → analysis_runs.id |
-| sheet_id | String | e.g. NCMC-RD-001 |
-| title | Text | Sheet title |
-| discipline | String | Civil / Structural / etc. |
-| revision | String | e.g. P1, A |
-| scale | String | e.g. 1:200, NTS |
-| source_file | String | PDF filename |
-| findings | JSON | Observations from AI |
-
-### `discrepancies`
-Cross-document gaps and generated RFI items.
-
-| Column | Type | Notes |
-|--------|------|-------|
-| id | Integer PK | — |
-| run_id | Integer | FK → analysis_runs.id |
-| rfi_id | String | e.g. RFI-01 |
-| issue | Text | Description of the gap |
-| evidence | Text | Source reference |
-| priority | String | High / Medium / Low |
-| suggested_action | Text | Recommended resolution |
-
-### `proposal_sections`
-AI-generated proposal draft content.
-
-| Column | Type | Notes |
-|--------|------|-------|
-| id | Integer PK | — |
-| run_id | Integer | FK → analysis_runs.id |
-| section_number | Integer | 1–8 |
-| section_title | String | e.g. Executive Summary |
-| content | Text | AI-drafted body text |
-
-### `approval_log`
-Full audit trail of every gate decision.
-
-| Column | Type | Notes |
-|--------|------|-------|
-| id | Integer PK | — |
-| run_id | Integer | FK → analysis_runs.id |
-| gate | String | G0 / G1 / G_BID / G2 / G3 / G4 |
-| action | String | approve / return |
-| role | String | Reviewer role |
-| comment | Text | Optional reason |
-| timestamp | DateTime | Decision time |
-| version | Integer | Revision number |
-
-### `past_projects`
-Historical project portfolio used for Bid Viability comparison.
-
-| Column | Type | Notes |
-|--------|------|-------|
-| id | Integer PK | — |
-| project_name | String | Full project name |
-| year | Integer | Tender year |
-| client | String | Client organisation |
-| project_type | String | road_rehabilitation / stormwater / bridge / building |
-| disciplines | JSON | List of discipline strings |
-| corridor_length_km | String | e.g. "2.1" or "N/A" |
-| drawing_completeness | String | complete / partial / illustrative |
-| rfi_count_at_tender | Integer | Number of RFIs raised at tender |
-| outcome | String | won / lost / declined |
-| profit_margin_pct | String | e.g. "18" or "N/A" |
-| complexity | String | low / medium / high |
-| active_road | String | yes / no |
-| notes | Text | Free-text notes |
-
-> Seed data: run `python backend/seed_past_projects.py` to populate 10 mock records.
+## Known limits
+Real AI prompts need OpenAI credits to verify; no real login/SSO; no malware scan; scanned RFQ pages are not OCR-read; CAD/BIM files are reference only; DOCX export only; proposal template and capability data are placeholders until AB supplies real ones.
