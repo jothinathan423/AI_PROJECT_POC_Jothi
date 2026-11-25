@@ -14,8 +14,8 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-TEXT_MODEL = os.getenv("OPENAI_TEXT_MODEL", "gpt-4o")
-VISION_MODEL = os.getenv("OPENAI_VISION_MODEL", "gpt-4o")
+TEXT_MODEL = os.getenv("OPENAI_TEXT_MODEL", "gpt-6-luna")
+VISION_MODEL = os.getenv("OPENAI_VISION_MODEL", "gpt-6-luna")
 
 DOCS_DIR = Path(__file__).parent / "documents"
 EXPORTS_DIR = Path(__file__).parent / "exports"
